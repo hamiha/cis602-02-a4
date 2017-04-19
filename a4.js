@@ -17,7 +17,10 @@ var barW = 500,
     barMargin = {top: 20, bottom: 120, left: 100, right: 20},
     barX = d3.scaleBand().padding(0.1),
     barY = d3.scaleLinear(),
-    barXAxis = null;
+    barXLine = d3.scaleBand().paddingOuter(0.1),
+    barYLine = d3.scaleLinear(),
+    barXAxis = null,
+    currentOccCode = "15-0000";
 
 function createBars(divId, jobData, year, occCode) {
     var svg = d3.select(divId).append("svg")
@@ -35,7 +38,7 @@ function createBars(divId, jobData, year, occCode) {
 	.domain(csData.map(function(d) { return d.area_title; }));
     barY.range([barH,0])
 	.domain([0,d3.max(extractJobsPct(jobData, null, occCode),
-			  function(d) { return +d.jobs_1000; })]);
+			  function(d) { return +d.jobs_1000; })])
 
     svg.selectAll("rect")
 		.data(csData)
@@ -135,16 +138,93 @@ function updateBars(divId, jobData, year) {
 }
 
 function getStateRankings(jobData, occCode) {
-    // TODO: compute the state rankings for the given occCode
-
-    var data = jobData;
-    console.log(data);
     
-    // TODO: remove this statically encoded solution that only works for code "15-0000"
-    return {"Alabama":16,"Alaska":18,"Arizona":12,"Arkansas":15,"California":10,"Colorado":9,"Connecticut":14,"Delaware":10,"District of Columbia":4,"Florida":15,"Georgia":11,"Hawaii":17,"Idaho":14,"Illinois":10,"Indiana":15,"Iowa":14,"Kansas":14,"Kentucky":15,"Louisiana":17,"Maine":15,"Maryland":8,"Massachusetts":9,"Michigan":15,"Minnesota":11,"Mississippi":17,"Missouri":13,"Montana":16,"Nebraska":12,"Nevada":16,"New Hampshire":13,"New Jersey":10,"New Mexico":16,"New York":15,"North Carolina":13,"North Dakota":14,"Ohio":13,"Oklahoma":15,"Oregon":13,"Pennsylvania":14,"Rhode Island":13,"South Carolina":16,"South Dakota":14,"Tennessee":15,"Texas":12,"Utah":11,"Vermont":14,"Virginia":7,"Washington":9,"West Virginia":16,"Wisconsin":13,"Wyoming":19}
+    var stateRankings = {};
+
+    var filterByCode = jobData.filter(function(d) {
+        return (d.occ_code == occCode);
+    });
+
+	filterByCode.map(function(d){ 
+		
+		filterByArea = jobData.filter(function(s){ 
+			return (s.area_title==d.area_title);	
+		});
+
+	 	filterByArea = filterByArea.sort(function(a,b){
+	 		return d3.descending(+a.tot_emp, +b.tot_emp);
+	 	}); 
+	    var tempranking = filterByArea.map(function(s){
+		 	return s.occ_code;
+	  	}).indexOf(d.occ_code);
+
+	  	stateRankings[d.area_title] = tempranking;
+
+	    // console.log(stateranks);
+
+	})
+    return stateRankings;	
+}
+
+function getStateHistory(divID, jobData, state){
+
+	var stateData = jobData.filter(function(d){return d.area_title == state});
+
+	stateData = stateData.filter(function(d){return d.occ_code == currentOccCode});
+
+	var history = stateData.map(function(d){
+		return {"year": d.year, "total": d.tot_emp};
+	})
+
+	console.log(history);
+
+	d3.select(divID).selectAll("svg").remove();
+
+	var svg = d3.select(divID).append("svg")
+	.attr("width", barW+barMargin.left+barMargin.right)
+	.attr("height", barH+barMargin.top+barMargin.bottom)
+	.append("g")
+	.attr("class", "main")
+	.attr("transform",
+	      "translate(" + barMargin.left + "," + barMargin.top + ")")
+
+	barXLine.range([0,barW])
+	.domain(history.map(function(d){return d.year}))
+    .paddingOuter([0.1])
+    
+    barYLine.range([barH,0])
+	.domain([d3.min(history.map(function(d){return +d.total}))/1.1,d3.max(history.map(function(d){return +d.total}))])
+	
+	var line = d3.line()
+        .x(function(d) { return 50 + barXLine(d["year"]); })
+        .y(function(d) { return barMargin.top + barYLine(d["total"]); });
+
+	svg.append("path")
+	  .datum(history)
+	  .attr("fill", "transparent")
+	  .transition()
+	  .duration(1000)
+	  .attr("stroke", "#2e59a0")
+	  .attr("d", line)
+
+	barXAxis = d3.axisBottom(barXLine);
+
+    svg.append("g")
+	.attr("transform", "translate(0," + barH +")")
+	.attr("class", "x axis")
+	.call(barXAxis)
+
+    var barYAxis = d3.axisLeft(barYLine);
+
+    svg.append("g")
+	.attr("class", "y axis")
+	.call(barYAxis)
+
+
 }
 
 function createBrushedVis(divId, usMap, jobData, year) {
+	var jobsData = jobData;
     var jobData = jobData.filter(
 	function(d) { return (+d.year == year); });
     
@@ -165,16 +245,8 @@ function createBrushedVis(divId, usMap, jobData, year) {
 
     var color = d3.scaleSequential(d3.interpolateViridis).domain([22,0]);
     
-    svg.append("g")
-		.selectAll("path")
-		.data(usMap.features)
-		.enter().append("path")
-		.attr("d", path)
-		.attr("fill",
-		      function(d) { return color(rankings[d.properties.name]); })
-		.attr("class", "state-boundary")
-		.classed("highlight", false)
-	    
+    createMap();
+    
     var bWidth = 400,
 	bHeight = 400,
 	midX = 200;
@@ -188,12 +260,13 @@ function createBrushedVis(divId, usMap, jobData, year) {
 		.entries(jobData)
 		.sort(function(a,b) { return d3.descending(+a.values[0].value, +b.values[0].value); })
 	
-	console.log(allJobs);
+	// console.log(allJobs);
 
     var barSvg = d3.select(divId).append("svg")
 		.attr("width", bWidth)
 		.attr("height", bHeight)
 		.style("vertical-align", "bottom")
+
 	    
     var y = d3.scaleBand().padding(0.1).range([0,bHeight]).domain(allJobs.map(function(d) { return d.values[0].key; }));
     var x = d3.scaleLinear().range([0,bWidth-midX]).domain([0,d3.max(allJobs, function(d) { return d.values[0].value; })]);
@@ -203,18 +276,48 @@ function createBrushedVis(divId, usMap, jobData, year) {
 		.attr("transform",
 		      function(d) { return "translate(0," + y(d.values[0].key) + ")";})
 		.attr("class", "bar")
+
 	    
     function jobMouseEnter() {
-		bar = d3.select(this);
-		bar.classed("highlight", true);
+		d3.selectAll("rect").classed("highlight", false);
+		var currentBar = d3.select(this);
+		currentBar.classed("highlight", true);
 
-		// console.log(bar.datum());
-    }
-    
-    function jobMouseLeave(){
-    	var bar = d3.select(this);
-	    // unhighlight row
-	    bar.classed("highlight", false);
+		currentOccCode = currentBar.datum().key;
+
+		rankings = getStateRankings(jobData, currentOccCode);
+
+		svg.selectAll("g").remove();
+
+		createMap();
+
+		// console.log(dat);
+	}
+
+	function mapMouseClick(){
+		d3.selectAll("path").classed("highlight", false);
+		currentState = d3.select(this);
+		currentState.classed("highlight", true);
+		stateName = currentState.datum().properties.name;
+
+		//console.log(currentState);
+
+		getStateHistory("#line" ,jobsData, stateName);
+
+		// console.log(stateName);
+	}
+
+	function createMap(){
+    	svg.append("g")
+		.selectAll("path")
+		.data(usMap.features)
+		.enter().append("path")
+		.attr("d", path)
+		.attr("fill",
+		      function(d) { return color(rankings[d.properties.name]); })
+		.attr("class", "state-boundary")
+		.classed("highlight",false)
+		.on("click", mapMouseClick);
     }
 
     bars.append("rect")
@@ -222,8 +325,8 @@ function createBrushedVis(divId, usMap, jobData, year) {
 		.attr("y", 0)
 		.attr("width", function(d) { return x(d.values[0].value); })
 		.attr("height", y.bandwidth())
+		.classed("highlight", function(d) { return d.key == '15-0000'; })
 		.on("mouseover", jobMouseEnter)
-		.on("mouseout", jobMouseLeave)
 
     bars.append("text")
     	.attr("x", midX - 4)
@@ -234,6 +337,8 @@ function createBrushedVis(divId, usMap, jobData, year) {
 				label = label.slice(0,30) + "...";
 			    }
 			    return label; });
+
+
 }
 
 function processData(errors, usMap, jobsData) {
