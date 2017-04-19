@@ -93,21 +93,7 @@ function updateBars(divId, jobData, year) {
 	.domain([0,d3.max(extractJobsPct(jobData, null, occCode),
 			  function(d) { return +d.jobs_1000; })]);    
 
-	selection.enter()
-		.append("rect")
-		.attr("class", "bar")
-		.attr("width", barX.bandwidth())
-		.attr("height", function(d) { return barH - barY(+d.jobs_1000); })
-		.attr("x", function(d) { return barX(d.area_title); })
-		.style("opacity", 0)
-		.style("fill", "steelblue")
-		.merge(selection)
-			.transition()
-			.duration(1000)
-			.delay(2000)
-			.attr("y", function(d) { return barY(+d.jobs_1000); })
-			.style("opacity", 1)
-
+	
 	selection
 		.transition()
 	    .duration(1000)	
@@ -124,6 +110,21 @@ function updateBars(divId, jobData, year) {
 	    .style("opacity", 0)
 	    .remove();
 
+	selection.enter()
+		.append("rect")
+		.attr("class", "bar")
+		.attr("width", barX.bandwidth())
+		.attr("height", function(d) { return barH - barY(+d.jobs_1000); })
+		.attr("x", function(d) { return barX(d.area_title); })
+		.style("opacity", 0)
+		.style("fill", "steelblue")
+		.merge(selection)
+			.transition()
+			.duration(1000)
+			.delay(2000)
+			.attr("y", function(d) { return barY(+d.jobs_1000); })
+			.style("opacity", 1)
+
 	barXAxis = d3.axisBottom(barX);
 
     svg.select(".x.axis")
@@ -131,13 +132,13 @@ function updateBars(divId, jobData, year) {
 		.delay(1000)
 		.duration(1000)
 			.call(barXAxis)
-
-
-	
 }
 
 function getStateRankings(jobData, occCode) {
     // TODO: compute the state rankings for the given occCode
+
+    var data = jobData;
+    console.log(data);
     
     // TODO: remove this statically encoded solution that only works for code "15-0000"
     return {"Alabama":16,"Alaska":18,"Arizona":12,"Arkansas":15,"California":10,"Colorado":9,"Connecticut":14,"Delaware":10,"District of Columbia":4,"Florida":15,"Georgia":11,"Hawaii":17,"Idaho":14,"Illinois":10,"Indiana":15,"Iowa":14,"Kansas":14,"Kentucky":15,"Louisiana":17,"Maine":15,"Maryland":8,"Massachusetts":9,"Michigan":15,"Minnesota":11,"Mississippi":17,"Missouri":13,"Montana":16,"Nebraska":12,"Nevada":16,"New Hampshire":13,"New Jersey":10,"New Mexico":16,"New York":15,"North Carolina":13,"North Dakota":14,"Ohio":13,"Oklahoma":15,"Oregon":13,"Pennsylvania":14,"Rhode Island":13,"South Carolina":16,"South Dakota":14,"Tennessee":15,"Texas":12,"Utah":11,"Vermont":14,"Virginia":7,"Washington":9,"West Virginia":16,"Wisconsin":13,"Wyoming":19}
@@ -151,66 +152,78 @@ function createBrushedVis(divId, usMap, jobData, year) {
 	height = 400;
 
     var svg = d3.select(divId).append("svg")
-	.attr("width", width)
-	.attr("height", height);
+		.attr("width", width)
+		.attr("height", height);
 
     var projection = d3.geoAlbersUsa()
-	.fitExtent([[0,0],[width,height]], usMap);
+		.fitExtent([[0,0],[width,height]], usMap);
 
     var path = d3.geoPath()
-	.projection(projection);
+		.projection(projection);
 
     var rankings = getStateRankings(jobData, "15-0000");
+
     var color = d3.scaleSequential(d3.interpolateViridis).domain([22,0]);
     
     svg.append("g")
-	.selectAll("path")
-	.data(usMap.features)
-	.enter().append("path")
-	.attr("d", path)
-	.attr("fill",
-	      function(d) { return color(rankings[d.properties.name]); })
-	.attr("class", "state-boundary")
-	.classed("highlight", false)
-    
+		.selectAll("path")
+		.data(usMap.features)
+		.enter().append("path")
+		.attr("d", path)
+		.attr("fill",
+		      function(d) { return color(rankings[d.properties.name]); })
+		.attr("class", "state-boundary")
+		.classed("highlight", false)
+	    
     var bWidth = 400,
 	bHeight = 400,
 	midX = 200;
     
     var allJobs = d3.nest()
-	.key(function(d) { return d["occ_code"]; })
-	.key(function(d) { return d["occ_title"]; })
-	.rollup(function(v) {
-	    return v.reduce(function(s,d) {
-		if (!+d.tot_emp) { return s; } return s + +d.tot_emp; },0); })
-	.entries(jobData)
-	.sort(function(a,b) { return d3.descending(+a.values[0].value, +b.values[0].value); })
-    
+		.key(function(d) { return d["occ_code"]; })
+		.key(function(d) { return d["occ_title"]; })
+		.rollup(function(v) {
+		    return v.reduce(function(s,d) {
+			if (!+d.tot_emp) { return s; } return s + +d.tot_emp; },0); })
+		.entries(jobData)
+		.sort(function(a,b) { return d3.descending(+a.values[0].value, +b.values[0].value); })
+	
+	console.log(allJobs);
+
     var barSvg = d3.select(divId).append("svg")
-	.attr("width", bWidth)
-	.attr("height", bHeight)
-	.style("vertical-align", "bottom")
-    
+		.attr("width", bWidth)
+		.attr("height", bHeight)
+		.style("vertical-align", "bottom")
+	    
     var y = d3.scaleBand().padding(0.1).range([0,bHeight]).domain(allJobs.map(function(d) { return d.values[0].key; }));
     var x = d3.scaleLinear().range([0,bWidth-midX]).domain([0,d3.max(allJobs, function(d) { return d.values[0].value; })]);
     
     var bars = barSvg.selectAll(".bar").data(allJobs)
-	.enter().append("g")
-	.attr("transform",
-	      function(d) { return "translate(0," + y(d.values[0].key) + ")";})
-	.attr("class", "bar")
-    
+		.enter().append("g")
+		.attr("transform",
+		      function(d) { return "translate(0," + y(d.values[0].key) + ")";})
+		.attr("class", "bar")
+	    
     function jobMouseEnter() {
-	// TODO: add code here
+		bar = d3.select(this);
+		bar.classed("highlight", true);
+
+		// console.log(bar.datum());
     }
     
+    function jobMouseLeave(){
+    	var bar = d3.select(this);
+	    // unhighlight row
+	    bar.classed("highlight", false);
+    }
+
     bars.append("rect")
-	.attr("x", midX)
-	.attr("y", 0)
-	.attr("width", function(d) { return x(d.values[0].value); })
-	.attr("height", y.bandwidth())
-	.classed("highlight", function(d) { return d.key == '15-0000'; })
-	.on("mouseover", jobMouseEnter)
+		.attr("x", midX)
+		.attr("y", 0)
+		.attr("width", function(d) { return x(d.values[0].value); })
+		.attr("height", y.bandwidth())
+		.on("mouseover", jobMouseEnter)
+		.on("mouseout", jobMouseLeave)
 
     bars.append("text")
     	.attr("x", midX - 4)
