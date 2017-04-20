@@ -217,7 +217,7 @@ function getStateHistory(divID, jobData, state){
 			.attr("transform", "translate(-50," + (barH/2) + ") rotate(-90)")
 			.append("text")
 			.style("text-anchor", "middle")
-			.text("Total Employess")
+			.text("Total number of employees")
 
 	    svg.append("text")
 			.attr("x", barW/2)
