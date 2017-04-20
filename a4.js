@@ -17,7 +17,7 @@ var barW = 500,
     barMargin = {top: 20, bottom: 120, left: 100, right: 20},
     barX = d3.scaleBand().padding(0.1),
     barY = d3.scaleLinear(),
-    barXLine = d3.scaleBand().paddingOuter(0.1),
+    barXLine = d3.scaleBand().padding(50),
     barYLine = d3.scaleLinear(),
     barXAxis = null,
     currentOccCode = "15-0000";
@@ -176,54 +176,64 @@ function getStateHistory(divID, jobData, state){
 		return {"year": d.year, "total": d.tot_emp};
 	})
 
-	console.log(history);
-
-	d3.select(divID).selectAll("svg").remove();
-
-	var svg = d3.select(divID).append("svg")
-	.attr("width", barW+barMargin.left+barMargin.right)
-	.attr("height", barH+barMargin.top+barMargin.bottom)
-	.append("g")
-	.attr("class", "main")
-	.attr("transform",
-	      "translate(" + barMargin.left + "," + barMargin.top + ")")
-
 	barXLine.range([0,barW])
 	.domain(history.map(function(d){return d.year}))
     .paddingOuter([0.1])
     
     barYLine.range([barH,0])
 	.domain([d3.min(history.map(function(d){return +d.total}))/1.1,d3.max(history.map(function(d){return +d.total}))])
-	
+
 	var line = d3.line()
-        .x(function(d) { return 50 + barXLine(d["year"]); })
+        .x(function(d) { return barXLine(d["year"]); })
         .y(function(d) { return barMargin.top + barYLine(d["total"]); });
 
-	svg.append("path")
-	  .datum(history)
-	  .attr("fill", "transparent")
-	  .transition()
-	  .duration(1000)
-	  .attr("stroke", "#2e59a0")
-	  .attr("d", line)
+    barXAxis = d3.axisBottom(barXLine);
+    barYAxis = d3.axisLeft(barYLine);
+	console.log(d3.select(divID).selectAll("svg").empty())
+	if(d3.select(divID).selectAll("svg").empty()){
+		var svg = d3.select(divID).append("svg")
+			.attr("width", barW+barMargin.left+barMargin.right)
+			.attr("height", barH+barMargin.top+barMargin.bottom)
+			.append("g")
+			.attr("class", "main")
+			.attr("transform",
+			      "translate(" + barMargin.left + "," + barMargin.top + ")")
+		svg.append("path")
+			  .datum(history)
+			  .attr("fill", "transparent")
+			  .attr("stroke", "#2e59a0")
+			  .attr("d", line)
+	    svg.append("g")
+			.attr("transform", "translate(0," + barH +")")
+			.attr("class", "x axis")
+			.call(barXAxis)
+	    svg.append("g")
+			.attr("class", "y axis")
+			.call(barYAxis)
+	}
+	else{
+		var svg = d3.select(divID).selectAll("svg").style("opacity", 1);
+		svg.selectAll("path")
+			.datum(history)
+			  .attr("fill", "transparent")
+			  .transition()
+			  .duration(750)
+			  .attr("stroke", "#2e59a0")
+			  .attr("d", line)
+		svg.select(".x.axis")
+			.transition()
+			.duration(750)
+			.call(barXAxis)
+		svg.select(".y.axis")
+			.transition()
+			.duration(750)
+			.call(barYAxis)
 
-	barXAxis = d3.axisBottom(barXLine);
-
-    svg.append("g")
-	.attr("transform", "translate(0," + barH +")")
-	.attr("class", "x axis")
-	.call(barXAxis)
-
-    var barYAxis = d3.axisLeft(barYLine);
-
-    svg.append("g")
-	.attr("class", "y axis")
-	.call(barYAxis)
-
+	}
 
 }
 
-function createBrushedVis(divId, usMap, jobData, year) {
+function createBrushedVis(divId, usMap, jobData, year, divLine) {
 	var jobsData = jobData;
     var jobData = jobData.filter(
 	function(d) { return (+d.year == year); });
@@ -291,7 +301,9 @@ function createBrushedVis(divId, usMap, jobData, year) {
 
 		createMap();
 
-		// console.log(dat);
+		if(!d3.select(divLine).selectAll("svg").empty())
+			d3.select(divLine).selectAll("svg")
+				.style("opacity", 0);
 	}
 
 	function mapMouseClick(){
@@ -346,7 +358,7 @@ function processData(errors, usMap, jobsData) {
     createBars("#bars", jobsData, 2012, "15-0000");
     updateBars("#bars", jobsData, 2016);
 
-    createBrushedVis("#brushed", usMap, jobsData, 2016);    
+    createBrushedVis("#brushed", usMap, jobsData, 2016,"#line");    
 }
 
 d3.queue()
