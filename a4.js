@@ -191,7 +191,7 @@ function getStateHistory(divID, jobData, state){
         .y(function(d) { return barYLine(d["total"]); });
 
     barXAxis = d3.axisBottom(barXLine);
-    barYAxis = d3.axisLeft(barYLine).tickFormat(d3.formatPrefix(".0", 1e3));
+    barYAxis = d3.axisLeft(barYLine).tickFormat(d3.formatPrefix(".1", 1e3));
 	console.log(d3.select(divID).selectAll("svg").empty())
 	if(d3.select(divID).selectAll("svg").empty()){
 		var svg = d3.select(divID).append("svg")
@@ -342,7 +342,8 @@ function createBrushedVis(divId, usMap, jobData, year, divLine) {
 		      function(d) { return color(rankings[d.properties.name]); })
 		.attr("class", "state-boundary")
 		.classed("highlight",false)
-		.on("click", mapMouseClick);
+		.on("click", mapMouseClick)
+		.append("title").text(function(d) { return d.properties.name;})
     }
 
     bars.append("rect")
