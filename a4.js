@@ -183,7 +183,7 @@ function getStateHistory(divID, jobData, state){
     .paddingOuter([0.1])
     
     barYLine.range([barH,0])
-	.domain([d3.min(history.map(function(d){return +d.total}))/1.01,d3.max(history.map(function(d){return +d.total}))])
+	.domain([d3.min(history.map(function(d){return +d.total})),d3.max(history.map(function(d){return +d.total}))])
 
 
 	var line = d3.line()
