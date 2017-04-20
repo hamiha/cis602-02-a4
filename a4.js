@@ -168,6 +168,8 @@ function getStateRankings(jobData, occCode) {
 
 function getStateHistory(divID, jobData, state){
 
+	console.log(state);
+
 	var stateData = jobData.filter(function(d){return d.area_title == state});
 
 	stateData = stateData.filter(function(d){return d.occ_code == currentOccCode});
@@ -183,12 +185,13 @@ function getStateHistory(divID, jobData, state){
     barYLine.range([barH,0])
 	.domain([d3.min(history.map(function(d){return +d.total}))/1.1,d3.max(history.map(function(d){return +d.total}))])
 
+
 	var line = d3.line()
         .x(function(d) { return barXLine(d["year"]); })
-        .y(function(d) { return barMargin.top + barYLine(d["total"]); });
+        .y(function(d) { return barYLine(d["total"]); });
 
     barXAxis = d3.axisBottom(barXLine);
-    barYAxis = d3.axisLeft(barYLine);
+    barYAxis = d3.axisLeft(barYLine).tickFormat(d3.formatPrefix(".0", 1e3));
 	console.log(d3.select(divID).selectAll("svg").empty())
 	if(d3.select(divID).selectAll("svg").empty()){
 		var svg = d3.select(divID).append("svg")
@@ -210,6 +213,16 @@ function getStateHistory(divID, jobData, state){
 	    svg.append("g")
 			.attr("class", "y axis")
 			.call(barYAxis)
+		svg.append("g")
+			.attr("transform", "translate(-50," + (barH/2) + ") rotate(-90)")
+			.append("text")
+			.style("text-anchor", "middle")
+			.text("Total Employess")
+
+	    svg.append("text")
+			.attr("x", barW/2)
+			.attr("y", barH + 60)
+			.text("Year")
 	}
 	else{
 		var svg = d3.select(divID).selectAll("svg").style("opacity", 1);
